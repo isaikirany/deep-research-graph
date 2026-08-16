@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Graph Engineering with Claude — a deep research agent in ~200 lines
 
 A single agent loop is one node with an edge back to itself. **Graph engineering** is
