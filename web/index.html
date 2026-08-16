@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --case:    #1b2a26;
+  --panel:   #24352f;
+  --recess:  #131f1c;
+  --etch:    #e6e1d3;
+  --amber:   #f0a830;
+  --lead:    #d9542b;
+  --worker:  #4fb3a3;
+  --critic:  #b06ba8;
+  --paper:   #efeade;
+
+  --label: 600 0.6875rem/1.2 "IBM Plex Sans Condensed", "Helvetica Neue", sans-serif;
+  --mono: 400 0.75rem/1.5 "IBM Plex Mono", ui-monospace, monospace;
+  --track: 0.16em;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--case);
+  color: var(--etch);
+  font: 400 1rem/1.5 "IBM Plex Sans Condensed", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Engraved-label treatment: every structural word on this machine wears it. */
+.etched {
+  font: var(--label);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: rgba(230, 225, 211, 0.5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+
+.shell { max-width: 1360px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* ---------------------------------------------------------------- masthead */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 36px 0 22px;
+  border-bottom: 1px solid rgba(230, 225, 211, 0.12);
+}
+
+.wordmark {
+  font: 700 clamp(2rem, 5vw, 3.25rem)/0.92 "IBM Plex Sans Condensed", sans-serif;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.wordmark em {
+  font-style: normal;
+  color: var(--amber);
+}
+.tagline {
+  margin: 10px 0 0;
+  max-width: 46ch;
+  font: var(--mono);
+  color: rgba(230, 225, 211, 0.55);
+}
+
+/* the key jack */
+.jack {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--recess);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 3px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.jack input {
+  width: 20ch;
+  background: transparent;
+  border: 0;
+  color: var(--etch);
+  font: var(--mono);
+  letter-spacing: 0.04em;
+}
+.jack input:focus { outline: none; }
+.jack:focus-within { border-color: rgba(240, 168, 48, 0.6); }
+
+.lamp {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #0c1412;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7);
+}
+.lamp[data-state="live"] {
+  background: var(--amber);
+  box-shadow: 0 0 10px 1px rgba(240, 168, 48, 0.7);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.lamp[data-state="ok"] {
+  background: var(--worker);
+  box-shadow: 0 0 8px rgba(79, 179, 163, 0.6);
+}
+.lamp[data-state="bad"] {
+  background: var(--lead);
+  box-shadow: 0 0 8px rgba(217, 84, 43, 0.6);
+}
+@keyframes pulse { 50% { opacity: 0.35; } }
+
+/* ------------------------------------------------------------------ inputs */
+
+.enquiry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: stretch;
+  padding: 22px 0 26px;
+}
+.enquiry-field {
+  flex: 1 1 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.enquiry-field input {
+  padding: 14px 16px;
+  background: var(--recess);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 3px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+  color: var(--etch);
+  font: 400 1.0625rem/1.3 "IBM Plex Sans Condensed", sans-serif;
+}
+.enquiry-field input::placeholder { color: rgba(230, 225, 211, 0.3); }
+.enquiry-field input:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+.run {
+  align-self: flex-end;
+  padding: 15px 30px;
+  background: var(--lead);
+  color: #150a06;
+  border: 0;
+  border-radius: 3px;
+  font: var(--label);
+  font-size: 0.8125rem;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #7d2d13, inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.run:hover { background: #e6653d; }
+.run:active { transform: translateY(2px); box-shadow: 0 0 0 #7d2d13; }
+.run:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.run[disabled] { background: #4a4a44; color: rgba(230,225,211,.4); box-shadow: none; cursor: wait; }
+
+/* ------------------------------------------------------------------- stage */
+
+.stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: start;
+}
+
+.patchbay {
+  position: relative;
+  padding: 34px 26px 42px;
+  background: var(--panel);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(230, 225, 211, 0.07), 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.cables {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.cable {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.36;
+  transition: opacity 0.3s;
+}
+.cable.is-live {
+  opacity: 1;
+  stroke-dasharray: 7 9;
+  animation: march 0.7s linear infinite;
+}
+.cable.is-done { opacity: 0.6; }
+@keyframes march { to { stroke-dashoffset: -32; } }
+
+.columns {
+  position: relative;
+  display: grid;
+  /* The workers column carries the actual text, so it gets the room. */
+  grid-template-columns: 0.8fr 1.3fr 0.9fr 1fr;
+  gap: clamp(26px, 4vw, 58px);
+  align-items: center;
+}
+.column { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* ------------------------------------------------------------------- nodes */
+
+.node {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 13px 13px;
+  background: var(--case);
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  border-left: 3px solid var(--node-color, rgba(230, 225, 211, 0.2));
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(230, 225, 211, 0.05);
+  transition: box-shadow 0.25s, transform 0.25s;
+}
+.node:hover { transform: translateY(-1px); }
+.node:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.node[data-state="live"] {
+  box-shadow: 0 0 0 1px rgba(240, 168, 48, 0.5), 0 0 22px rgba(240, 168, 48, 0.18);
+}
+.node[data-state="idle"] { opacity: 0.55; }
+
+.node-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 7px;
+  min-width: 0;
+  margin-bottom: 7px;
+}
+.node-name {
+  font: var(--label);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--etch);
+}
+.node-tag {
+  font: var(--mono);
+  font-size: 0.625rem;
+  color: rgba(230, 225, 211, 0.4);
+}
+.node-tag:empty { display: none; }
+.node-model {
+  margin-left: auto;
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border: 1px solid var(--node-color, rgba(230, 225, 211, 0.25));
+  border-radius: 2px;
+  font: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+  color: var(--node-color, rgba(230, 225, 211, 0.5));
+  white-space: nowrap;
+}
+.node-body {
+  font: var(--mono);
+  color: rgba(230, 225, 211, 0.62);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.spawning { animation: spawn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) backwards; }
+@keyframes spawn {
+  from { opacity: 0; transform: translateX(-14px) scale(0.94); }
+}
+
+.placeholder {
+  padding: 18px 13px;
+  border: 1px dashed rgba(230, 225, 211, 0.2);
+  border-radius: 3px;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------- telemetry */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px;
+  background: var(--panel);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(230, 225, 211, 0.07);
+}
+
+.readouts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 10px;
+}
+.readout-value {
+  font: 500 1.375rem/1 "IBM Plex Mono", monospace;
+  color: var(--etch);
+  font-variant-numeric: tabular-nums;
+}
+.readout-value.is-lead { color: var(--lead); }
+.readout-value.is-worker { color: var(--worker); }
+
+.trace {
+  height: 300px;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--recess);
+  border-radius: 3px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+  font: var(--mono);
+  font-size: 0.6875rem;
+}
+.trace-line {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  color: rgba(230, 225, 211, 0.7);
+}
+.trace-line b { flex: 0 0 3.5ch; font-weight: 400; color: rgba(230, 225, 211, 0.3); }
+.trace-line.is-route { color: var(--critic); }
+.trace-line.is-error { color: var(--lead); }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(230, 225, 211, 0.1);
+}
+.legend-item { display: flex; align-items: center; gap: 7px; }
+.legend-swatch { width: 18px; height: 2px; border-radius: 1px; }
+
+/* ------------------------------------------------------------------- brief */
+
+.brief {
+  max-width: 860px;
+  margin: 30px auto 0;
+  padding: 46px clamp(24px, 5vw, 62px) 54px;
+  background: var(--paper);
+  color: #201d17;
+  border-radius: 3px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+}
+.brief[hidden] { display: none; }
+.brief-mark {
+  font: var(--label);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: rgba(32, 29, 23, 0.45);
+}
+.brief-body {
+  max-width: 66ch;
+  margin-top: 22px;
+  font: 400 1.0625rem/1.65 "IBM Plex Serif", Georgia, serif;
+}
+.brief-body h1, .brief-body h2, .brief-body h3 {
+  font-family: "IBM Plex Sans Condensed", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 1.7em 0 0.5em;
+}
+.brief-body > :first-child { margin-top: 0; }
+.brief-body h1 { font-size: 1.85rem; }
+.brief-body h2 { font-size: 1.3rem; }
+.brief-body h3 { font-size: 1.05rem; }
+.brief-body a { color: #8f3717; text-underline-offset: 2px; }
+.brief-body code {
+  font: 400 0.875em/1 "IBM Plex Mono", monospace;
+  background: rgba(32, 29, 23, 0.07);
+  padding: 1px 4px;
+}
+.brief-body ul, .brief-body ol { padding-left: 1.2em; }
+.brief-body li { margin: 0.3em 0; }
+
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 1.05em;
+  margin-left: 2px;
+  background: var(--lead);
+  vertical-align: -0.16em;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---------------------------------------------------------------- inspector */
+
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(480px, 100%);
+  padding: 30px 28px;
+  background: var(--panel);
+  border-left: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: -18px 0 44px rgba(0, 0, 0, 0.45);
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.3, 0.9, 0.3, 1);
+  z-index: 20;
+}
+.drawer[data-open="true"] { transform: none; }
+.drawer-close {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  background: none;
+  border: 1px solid rgba(230, 225, 211, 0.25);
+  border-radius: 2px;
+  color: var(--etch);
+  font: var(--label);
+  letter-spacing: var(--track);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.drawer-close:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.drawer-title {
+  margin: 0 0 4px;
+  font: 700 1.75rem/1 "IBM Plex Sans Condensed", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.drawer-section { margin-top: 26px; }
+.drawer-text {
+  margin-top: 8px;
+  font: var(--mono);
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: rgba(230, 225, 211, 0.8);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 16, 14, 0.6);
+  z-index: 19;
+}
+.scrim[hidden] { display: none; }
+
+.error-strip {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  background: rgba(217, 84, 43, 0.14);
+  border-left: 3px solid var(--lead);
+  border-radius: 2px;
+  font: var(--mono);
+  color: #f5b39c;
+}
+.error-strip[hidden] { display: none; }
+
+/* Keep this width in step with STACK_BELOW in the script — the cable geometry
+   and the column layout have to agree on when the graph stops running left
+   to right. Four columns need real width, or the node names truncate. */
+@media (max-width: 1100px) {
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .patchbay { padding: 28px 22px 30px 38px; }
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    row-gap: 26px;
+  }
+  .column { gap: 26px; }
+  .trace { height: 200px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="masthead">
+    <div>
+      <h1 class="wordmark">Research <em>graph</em></h1>
+      <p class="tagline">One question, split across parallel workers, reviewed by a critic that never wrote a word of it.</p>
+    </div>
+    <label class="jack">
+      <span class="etched">Key</span>
+      <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Anthropic API key">
+      <span class="lamp" id="key-lamp" role="status" aria-label="Key status"></span>
+    </label>
+  </header>
+
+  <form class="enquiry" id="form">
+    <div class="enquiry-field">
+      <span class="etched">Enquiry</span>
+      <input id="question" placeholder="How did AI agent frameworks change in 2026?" aria-label="Research question">
+    </div>
+    <button class="run" id="run" type="submit">Run graph</button>
+  </form>
+
+  <p class="error-strip" id="error" role="alert" hidden></p>
+
+  <div class="stage">
+    <section class="patchbay" aria-label="Agent graph">
+      <svg class="cables" id="cables" aria-hidden="true"></svg>
+      <div class="columns" id="columns">
+        <div class="column" id="col-plan"></div>
+        <div class="column" id="col-workers"></div>
+        <div class="column" id="col-critique"></div>
+        <div class="column" id="col-synthesize"></div>
+      </div>
+    </section>
+
+    <aside class="rail" aria-label="Telemetry">
+      <div class="readouts">
+        <div>
+          <div class="etched">Round</div>
+          <div class="readout-value" id="m-round">—</div>
+        </div>
+        <div>
+          <div class="etched">Workers</div>
+          <div class="readout-value" id="m-workers">—</div>
+        </div>
+        <div>
+          <div class="etched">Sonnet tokens</div>
+          <div class="readout-value is-lead" id="m-lead">0</div>
+        </div>
+        <div>
+          <div class="etched">Haiku tokens</div>
+          <div class="readout-value is-worker" id="m-worker">0</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="etched">Trace</div>
+        <div class="trace" id="trace" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--lead)"></span><span class="etched">Lead path</span></span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--worker)"></span><span class="etched">Worker report</span></span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--critic)"></span><span class="etched">Loop back</span></span>
+      </div>
+    </aside>
+  </div>
+
+  <article class="brief" id="brief" hidden>
+    <div class="brief-mark" id="brief-mark">The brief</div>
+    <div class="brief-body" id="brief-body"></div>
+  </article>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" data-open="false" aria-hidden="true" aria-label="Node detail">
+  <button class="drawer-close" id="drawer-close" type="button">Close</button>
+  <div class="etched" id="drawer-kicker">Node</div>
+  <h2 class="drawer-title" id="drawer-title">—</h2>
+  <div id="drawer-sections"></div>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@14.1.3/marked.min.js"
+        integrity="sha384-k8o8HikHweyzW55Wd3wl18ovJj6vHVYNQeQbeSM0fxx+0WiH4TcccOG9uz8Xd2JR"
+        crossorigin="anonymous"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const COLOR = { lead: "var(--lead)", worker: "var(--worker)", critic: "var(--critic)" };
+const STACK_BELOW = "(max-width: 1100px)";  // must match the media query above
+
+// The graph's own vocabulary, kept in one place so the panel and the drawer
+// always name a node the same way.
+const STATIC_NODES = {
+  plan:       { column: "col-plan",       label: "Plan",       model: "Sonnet 5",     tone: "lead",   idle: "Splits the question into independent subquestions." },
+  critique:   { column: "col-critique",   label: "Critique",   model: "Sonnet 5",     tone: "critic", idle: "Reviews findings for gaps. Its verdict routes the graph." },
+  synthesize: { column: "col-synthesize", label: "Synthesize", model: "Sonnet 5",     tone: "lead",   idle: "Writes the brief from everything that fanned in." }
+};
+
+let nodes = {};      // id -> { el, meta, data }
+let edges = [];      // { from, to, tone, kind, state }
+let running = false;
+let reportText = "";
+let reportPending = false;
+let tokens = { lead: 0, worker: 0 };
+let spawned = 0;
+let maxRounds = 2;
+
+/* ------------------------------------------------------------ node rendering */
+
+function nodeCard(id, { label, model, tone, body, tag, spawning }) {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = "node" + (spawning ? " spawning" : "");
+  el.dataset.node = id;
+  el.dataset.state = "idle";
+  el.style.setProperty("--node-color", COLOR[tone]);
+  el.innerHTML =
+    '<div class="node-head"><span class="lamp"></span>' +
+    '<span class="node-name"></span><span class="node-tag"></span>' +
+    '<span class="node-model"></span></div><div class="node-body"></div>';
+  el.querySelector(".node-name").textContent = label;
+  el.querySelector(".node-tag").textContent = tag || "";
+  el.querySelector(".node-model").textContent = model;
+  el.querySelector(".node-body").textContent = body;
+  el.addEventListener("click", () => openDrawer(id));
+  return el;
+}
+
+function setNodeState(id, state, body) {
+  const node = nodes[id];
+  if (!node) return;
+  node.el.dataset.state = state;
+  node.el.querySelector(".lamp").dataset.state =
+    state === "live" ? "live" : state === "done" ? "ok" : "";
+  if (body !== undefined) node.el.querySelector(".node-body").textContent = body;
+}
+
+function resetPanel() {
+  nodes = {};
+  edges = [];
+  tokens = { lead: 0, worker: 0 };
+  spawned = 0;
+  reportText = "";
+  $("trace").innerHTML = "";
+  $("brief").hidden = true;
+  $("brief-body").innerHTML = "";
+  $("brief-body").classList.remove("caret");
+  $("m-round").textContent = "—";
+  $("m-workers").textContent = "—";
+  $("m-lead").textContent = "0";
+  $("m-worker").textContent = "0";
+
+  for (const [id, meta] of Object.entries(STATIC_NODES)) {
+    const column = $(meta.column);
+    column.innerHTML = "";
+    const el = nodeCard(id, { ...meta, body: meta.idle });
+    column.appendChild(el);
+    nodes[id] = { el, meta, data: {} };
+  }
+
+  const workers = $("col-workers");
+  workers.innerHTML = '<div class="placeholder"><span class="etched">Workers spawn here</span></div>';
+  drawCables();
+}
+
+function addWorker(id, subquestion, round) {
+  const column = $("col-workers");
+  const placeholder = column.querySelector(".placeholder");
+  if (placeholder) placeholder.remove();
+  const meta = {
+    label: "Research",
+    tag: "R" + round,
+    model: "Haiku 4.5",
+    tone: "worker",
+    idle: "Reads the web on its own subquestion, in its own context window. Only the summary crosses back to the lead."
+  };
+  const el = nodeCard(id, { ...meta, body: subquestion, spawning: true });
+  column.appendChild(el);
+  nodes[id] = { el, meta, data: { subquestion, round } };
+}
+
+/* ------------------------------------------------------------------- cables */
+// Cables are measured, not hard-coded — so a round that spawns two workers and
+// a round that spawns five both get honest geometry, at any viewport width.
+
+function anchor(id, side) {
+  const box = nodes[id].el.getBoundingClientRect();
+  const frame = $("cables").getBoundingClientRect();
+  const x = side === "right" ? box.right : side === "left" ? box.left : box.left + box.width / 2;
+  const y = side === "bottom" ? box.bottom : box.top + box.height / 2;
+  return { x: x - frame.left, y: y - frame.top };
+}
+
+function drawCables() {
+  const svg = $("cables");
+  svg.innerHTML = "";
+  const stacked = window.matchMedia(STACK_BELOW).matches;
+
+  for (const edge of edges) {
+    if (!nodes[edge.from] || !nodes[edge.to]) continue;
+    const loop = edge.kind === "loop";
+    const stackedLoop = loop && stacked;
+    const from = anchor(edge.from, stackedLoop ? "left" : loop ? "bottom" : stacked ? "bottom" : "right");
+    const to = anchor(edge.to, stackedLoop ? "left" : loop ? "bottom" : stacked ? "top" : "left");
+
+    let d;
+    if (stackedLoop) {
+      // Stacked, the loop-back has no room to arc underneath, so it runs back
+      // up the left gutter — still visibly a return path, not a forward step.
+      const bow = Math.min(from.x, to.x) - 22;
+      d = `M${from.x} ${from.y} C${bow} ${from.y}, ${bow} ${to.y}, ${to.x} ${to.y}`;
+    } else if (loop) {
+      const drop = Math.max(52, Math.abs(to.x - from.x) * 0.3);
+      d = `M${from.x} ${from.y} C${from.x} ${from.y + drop}, ${to.x} ${to.y + drop}, ${to.x} ${to.y}`;
+    } else if (stacked) {
+      d = `M${from.x} ${from.y} C${from.x} ${from.y + 24}, ${to.x} ${to.y - 24}, ${to.x} ${to.y}`;
+    } else {
+      // Reach has to answer the vertical drop too — a cable from one lead node
+      // out to a tall stack of workers is mostly a climb, not a run.
+      const reach = Math.max(
+        56,
+        (to.x - from.x) * 0.55,
+        Math.abs(to.y - from.y) * 0.42
+      );
+      d = `M${from.x} ${from.y} C${from.x + reach} ${from.y}, ${to.x - reach} ${to.y}, ${to.x} ${to.y}`;
+    }
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", "cable" + (edge.state ? " is-" + edge.state : ""));
+    path.setAttribute("stroke", COLOR[edge.tone]);
+    svg.appendChild(path);
+  }
+}
+
+function connect(from, to, tone, kind) {
+  edges.push({ from, to, tone, kind, state: "live" });
+  drawCables();
+}
+
+function settle(match, state) {
+  for (const edge of edges) if (match(edge)) edge.state = state;
+  drawCables();
+}
+
+window.addEventListener("resize", drawCables);
+
+/* ----------------------------------------------------------------- readouts */
+
+function trace(text, kind) {
+  const line = document.createElement("div");
+  line.className = "trace-line" + (kind ? " is-" + kind : "");
+  const tick = document.createElement("b");
+  tick.textContent = String($("trace").childElementCount + 1).padStart(2, "0");
+  const body = document.createElement("span");
+  body.textContent = text;
+  line.append(tick, body);
+  $("trace").append(line);
+  $("trace").scrollTop = $("trace").scrollHeight;
+}
+
+function paintReport() {
+  reportPending = false;
+  const body = $("brief-body");
+  if (!window.marked) { body.textContent = reportText; return; }
+
+  // The brief is built from web pages the graph did not choose, so treat it as
+  // hostile. Escaping first means marked can only emit its own tags — no raw
+  // HTML survives — which leaves href and src as the entire attack surface.
+  const safe = reportText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const parsed = document.createElement("div");
+  parsed.innerHTML = marked.parse(safe);
+
+  // Allow-list the schemes, so javascript: and data: links drop their target
+  // rather than becoming a click away from the key in sessionStorage. Scrub
+  // before attaching, so nothing loads on the way through.
+  for (const el of parsed.querySelectorAll("[href], [src]")) {
+    for (const attribute of ["href", "src"]) {
+      const value = el.getAttribute(attribute);
+      if (value && !/^(?:https?:\/\/|mailto:|#)/i.test(value.trim())) {
+        el.removeAttribute(attribute);
+      }
+    }
+  }
+  body.replaceChildren(...parsed.childNodes);
+}
+
+/* ------------------------------------------------------------------- drawer */
+
+function openDrawer(id) {
+  const node = nodes[id];
+  if (!node) return;
+  $("drawer-kicker").textContent = node.meta.model;
+  $("drawer-title").textContent =
+    node.meta.label + (node.meta.tag ? " · " + node.meta.tag : "");
+
+  const sections = $("drawer-sections");
+  sections.innerHTML = "";
+  const fields = [
+    ["Job", node.meta.idle],
+    ["Subquestion", node.data.subquestion],
+    ["Findings", node.data.notes],
+    ["Gaps found", node.data.gaps && (node.data.gaps.length ? node.data.gaps.join("\n\n") : "None — the graph moves on to the writer.")],
+    ["Tokens", node.data.tokens && `${node.data.tokens.input} in · ${node.data.tokens.output} out`]
+  ];
+  for (const [label, value] of fields) {
+    if (!value) continue;
+    const section = document.createElement("div");
+    section.className = "drawer-section";
+    const head = document.createElement("div");
+    head.className = "etched";
+    head.textContent = label;
+    const text = document.createElement("div");
+    text.className = "drawer-text";
+    text.textContent = value;
+    section.append(head, text);
+    sections.append(section);
+  }
+
+  $("drawer").dataset.open = "true";
+  $("drawer").setAttribute("aria-hidden", "false");
+  $("scrim").hidden = false;
+  $("drawer-close").focus();
+}
+
+function closeDrawer() {
+  $("drawer").dataset.open = "false";
+  $("drawer").setAttribute("aria-hidden", "true");
+  $("scrim").hidden = true;
+}
+
+$("drawer-close").addEventListener("click", closeDrawer);
+$("scrim").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+/* -------------------------------------------------------------------- events */
+
+const handlers = {
+  "graph.start": (e) => {
+    maxRounds = e.max_rounds;
+    trace(`question accepted · ${e.max_rounds} round budget`);
+  },
+
+  "node.start": (e) => {
+    if (e.node.startsWith("r")) return setNodeState(e.node, "live");
+    setNodeState(e.node, "live");
+    if (e.node === "critique") {
+      trace(`critique reading ${e.reviewing} findings`);
+      settle((edge) => edge.tone === "worker", "live");
+    }
+    if (e.node === "synthesize") trace("synthesize writing the brief");
+    if (e.node === "plan") trace("plan splitting the question");
+  },
+
+  "node.done": (e) => {
+    const node = nodes[e.node];
+    if (node && e.notes) node.data.notes = e.notes;
+
+    if (e.node === "plan") {
+      setNodeState("plan", "done", `${e.subquestions.length} subquestions`);
+      trace(`plan returned ${e.subquestions.length} subquestions`);
+    } else if (e.node === "critique") {
+      node.data.gaps = e.gaps;
+      setNodeState("critique", "done", e.gaps.length ? `${e.gaps.length} gaps` : "No gaps — clear to write");
+      settle((edge) => edge.tone === "worker", "done");
+    } else if (e.node === "synthesize") {
+      setNodeState("synthesize", "done", "Brief complete");
+      settle((edge) => edge.to === "synthesize", "done");
+    } else {
+      setNodeState(e.node, "done", `Reported · ${e.searches || 0} searches`);
+      settle((edge) => edge.from === e.node || edge.to === e.node, "done");
+      connect(e.node, "critique", "worker");
+      settle((edge) => edge.from === e.node && edge.to === "critique", "done");
+    }
+  },
+
+  fanout: (e) => {
+    spawned += e.workers.length;
+    $("m-round").textContent = `${e.round}/${maxRounds}`;
+    $("m-workers").textContent = spawned;
+    trace(`round ${e.round} · plan fans out to ${e.workers.length} workers`);
+    e.workers.forEach((id, i) => {
+      addWorker(id, e.subquestions[i], e.round);
+      connect(e.round === 1 ? "plan" : "critique", id, e.round === 1 ? "lead" : "critic", e.round === 1 ? "fan" : "loop");
+    });
+    drawCables();
+  },
+
+  fanin: (e) => trace(`fan-in · ${e.findings} findings in shared state`),
+
+  route: (e) => {
+    if (e.to === "synthesize") {
+      trace(`critique routes forward — ${e.reason}`, "route");
+      connect("critique", "synthesize", "lead");
+    } else {
+      trace(`critique routes back — ${e.reason}`, "route");
+    }
+  },
+
+  usage: (e) => {
+    const bucket = e.model.includes("haiku") ? "worker" : "lead";
+    tokens[bucket] += (e.input_tokens || 0) + (e.output_tokens || 0);
+    $("m-" + bucket).textContent = tokens[bucket].toLocaleString();
+    if (nodes[e.node]) nodes[e.node].data.tokens = { input: e.input_tokens, output: e.output_tokens };
+  },
+
+  "report.delta": (e) => {
+    if (!reportText) {
+      $("brief").hidden = false;
+      $("brief-body").classList.add("caret");
+      $("brief-mark").textContent = "The brief · writing";
+    }
+    reportText += e.text;
+    if (!reportPending) { reportPending = true; requestAnimationFrame(paintReport); }
+  },
+
+  "graph.done": () => {
+    paintReport();
+    $("brief-body").classList.remove("caret");
+    $("brief-mark").textContent = "The brief";
+    trace("graph complete");
+  },
+
+  error: (e) => {
+    $("error").textContent = e.message;
+    $("error").hidden = false;
+    trace(e.message, "error");
+    $("key-lamp").dataset.state = "bad";
+  }
+};
+
+/* --------------------------------------------------------------- key + run */
+
+$("key").value = sessionStorage.getItem("anthropic-key") || "";
+
+async function checkKey(announce) {
+  const key = $("key").value.trim();
+  sessionStorage.setItem("anthropic-key", key);
+  $("key-lamp").dataset.state = "live";
+  const res = await fetch("/key", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key })
+  }).then((r) => r.json()).catch(() => ({ ok: false }));
+  // A blank field is not a mistake — the server may already hold a key from the
+  // environment. Only say something went wrong once someone has typed one.
+  $("key-lamp").dataset.state = res.ok ? "ok" : key ? "bad" : "";
+  if (res.ok) {
+    $("error").hidden = true;
+    if (res.source === "env") $("key").placeholder = "using ANTHROPIC_API_KEY";
+  } else if (announce && key) {
+    $("error").textContent = "That key was rejected. Check it and try again.";
+    $("error").hidden = false;
+  }
+}
+
+$("key").addEventListener("change", () => checkKey(true));
+
+$("form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (running) return;
+  const question = $("question").value.trim() || $("question").placeholder;
+
+  running = true;
+  $("run").disabled = true;
+  $("run").textContent = "Running";
+  $("error").hidden = true;
+  resetPanel();
+
+  try {
+    const res = await fetch("/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: $("key").value.trim(), question })
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let split;
+      while ((split = buffer.indexOf("\n\n")) >= 0) {
+        const frame = buffer.slice(0, split);
+        buffer = buffer.slice(split + 2);
+        if (!frame.startsWith("data: ")) continue;
+        const payload = JSON.parse(frame.slice(6));
+        (handlers[payload.event] || (() => {}))(payload);
+      }
+    }
+  } catch (error) {
+    handlers.error({ message: "Connection to the graph dropped." });
+  } finally {
+    running = false;
+    $("run").disabled = false;
+    $("run").textContent = "Run graph";
+  }
+});
+
+resetPanel();
+checkKey();
+</script>
+</body>
+</html>

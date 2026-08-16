@@ -16,6 +16,26 @@ export ANTHROPIC_API_KEY=sk-ant-...
 .venv/bin/python research_graph.py "How did AI agent frameworks change in 2026?"
 ```
 
+## Watch it run
+
+The graph is easier to believe when you can see it route. `server.py` serves a
+panel that draws the graph as it executes — the lead fanning out to workers, each
+worker's own context, the critic's verdict firing the loop-back edge, and the
+brief streaming in as it is written.
+
+```bash
+.venv/bin/python server.py     # http://127.0.0.1:8000
+```
+
+Paste an API key into the field at the top right, or start the server with
+`ANTHROPIC_API_KEY` already set and leave the field blank. A key you paste is
+held in memory for that request only — never written to disk, never logged, and
+sent nowhere but `api.anthropic.com`. The browser keeps it in `sessionStorage`,
+so it is gone when you close the tab.
+
+Click any node to open its detail: which model ran it, the subquestion it was
+given, what it reported, and what it cost.
+
 ---
 
 ## The three parts of a graph
@@ -28,15 +48,15 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 ```mermaid
 flowchart LR
-    Q([question]) --> P[plan<br/><i>opus</i>]
+    Q([question]) --> P[plan<br/><i>sonnet</i>]
     P -- fan-out --> R1[research<br/><i>haiku</i>]
     P -- fan-out --> R2[research<br/><i>haiku</i>]
     P -- fan-out --> R3[research<br/><i>haiku</i>]
-    R1 -- fan-in --> C{critique<br/><i>opus</i>}
+    R1 -- fan-in --> C{critique<br/><i>sonnet</i>}
     R2 -- fan-in --> C
     R3 -- fan-in --> C
     C -- gaps found --> R1
-    C -- no gaps --> S[synthesize<br/><i>opus</i>]
+    C -- no gaps --> S[synthesize<br/><i>sonnet</i>]
     S --> B([brief])
 ```
 
@@ -51,7 +71,7 @@ than one loop could hold.
 researcher at once. Wall-clock is the slowest single worker, not the sum.
 
 **3. You pick the model per node.** Planning and writing are judgment work
-(`claude-opus-5`); reading search results is bulk work (`claude-haiku-4-5`). A
+(`claude-sonnet-5`); reading search results is bulk work (`claude-haiku-4-5`). A
 single-agent loop has to run everything on one model. This is the cost control
 you buy by splitting the work up.
 
@@ -127,10 +147,12 @@ Each of these is a real graph-engineering concept, and each is a small diff here
 
 ## Files
 
-| File               | What's in it                                        |
-| ------------------ | --------------------------------------------------- |
-| `research_graph.py`| The whole graph: state, four nodes, and the runtime |
-| `test_graph.py`    | Routing logic checks that cost no API credits       |
+| File               | What's in it                                          |
+| ------------------ | ----------------------------------------------------- |
+| `research_graph.py`| The whole graph: state, four nodes, and the runtime   |
+| `server.py`        | Serves the panel and streams the graph's events to it |
+| `web/index.html`   | The panel — one file, no build step                   |
+| `test_graph.py`    | Routing and event checks that cost no API credits     |
 
 ```bash
 .venv/bin/python test_graph.py

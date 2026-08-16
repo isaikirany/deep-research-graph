@@ -15,10 +15,12 @@ Run:  python research_graph.py "your question"
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import os
 import sys
 import textwrap
+import uuid
 from dataclasses import dataclass, field
 
 from anthropic import AsyncAnthropic
@@ -26,13 +28,72 @@ from anthropic import AsyncAnthropic
 # One of the reasons to build a graph: you pick the model per node. Planning and
 # synthesis are judgment work; reading search results is bulk work. Paying Opus
 # rates for the bulk work is the mistake a single-agent loop can't avoid.
-LEAD_MODEL = "claude-opus-5"
-WORKER_MODEL = "claude-haiku-4-5"
+# Override per environment — some proxies do not permit every model.
+LEAD_MODEL = os.environ.get("LEAD_MODEL", "claude-sonnet-5")
+WORKER_MODEL = os.environ.get("WORKER_MODEL", "claude-haiku-4-5")
 
 MAX_ROUNDS = 2  # loop-back budget: how many times critique may send work back
 MAX_SUBQUESTIONS = 5  # fan-out width
 
-client = AsyncAnthropic()  # reads ANTHROPIC_API_KEY
+# The client and the event sink both live in context variables so one process can
+# run several graphs at once — each with its own key — without any node needing
+# to know it. asyncio.gather copies the context into every worker task, so the
+# fan-out inherits both for free.
+_client_var: contextvars.ContextVar[AsyncAnthropic] = contextvars.ContextVar("client")
+_emit_var: contextvars.ContextVar = contextvars.ContextVar("emit", default=None)
+
+
+def make_client(api_key: str | None = None) -> AsyncAnthropic:
+    """A client that also works behind a gateway (ANTHROPIC_BASE_URL).
+
+    Some gateways require a session identifier on every request. The header is
+    ignored by api.anthropic.com, so it costs nothing to always send it.
+    """
+    return AsyncAnthropic(
+        api_key=api_key, default_headers={"x-session-id": uuid.uuid4().hex}
+    )
+
+
+def client() -> AsyncAnthropic:
+    """The Anthropic client for this run. Defaults to ANTHROPIC_API_KEY."""
+    try:
+        return _client_var.get()
+    except LookupError:
+        created = make_client()
+        _client_var.set(created)
+        return created
+
+
+def use_client(instance: AsyncAnthropic) -> None:
+    """Bind a client to the current context — how the web server passes a key."""
+    _client_var.set(instance)
+
+
+def use_emitter(sink) -> None:
+    """Bind an event sink to the current context. Sink takes one dict."""
+    _emit_var.set(sink)
+
+
+def emit(event: str, **data) -> None:
+    """Every state change the graph makes, announced on one channel."""
+    sink = _emit_var.get()
+    if sink is None:
+        print(f"  [graph] {event} {data or ''}".rstrip(), file=sys.stderr)
+    else:
+        sink({"event": event, **data})
+
+
+def _report_usage(node: str, model: str, response) -> None:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return
+    emit(
+        "usage",
+        node=node,
+        model=model,
+        input_tokens=getattr(usage, "input_tokens", 0) or 0,
+        output_tokens=getattr(usage, "output_tokens", 0) or 0,
+    )
 
 
 # ---------------------------------------------------------------- shared state
@@ -64,20 +125,48 @@ def should_loop(state: State) -> bool:
     return bool(state.gaps) and state.round < MAX_ROUNDS
 
 
-async def _json_call(system: str, prompt: str, schema: dict) -> dict:
+async def _create(**kwargs):
+    """One non-streaming message.
+
+    Read as a stream regardless: some proxies return SSE for every request, and
+    the plain `.create()` path cannot parse that body.
+    """
+    async with client().messages.stream(**kwargs) as stream:
+        return await stream.get_final_message()
+
+
+def extract_json(text: str) -> dict:
+    """The JSON object in a reply, whether or not prose came with it.
+
+    The API's json_schema format makes this unnecessary. Proxies that drop the
+    format do not, and then the model answers in prose with the JSON inside.
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start, end = text.find("{"), text.rfind("}")
+        if start == -1 or end <= start:
+            raise ValueError(f"no JSON object in reply: {text[:200]}")
+        return json.loads(text[start : end + 1])
+
+
+async def _json_call(node: str, system: str, prompt: str, schema: dict) -> dict:
     """Lead-model call constrained to a JSON schema. No tools, no free text."""
-    response = await client.messages.create(
+    response = await _create(
         model=LEAD_MODEL,
         max_tokens=4000,
-        system=system,
+        # The schema is stated twice on purpose: as the API's output format, and
+        # in the system prompt for backends that ignore it.
+        system=f"{system}\n\nReply with JSON only, matching:\n{json.dumps(schema)}",
         output_config={
             "effort": "medium",
             "format": {"type": "json_schema", "schema": schema},
         },
         messages=[{"role": "user", "content": prompt}],
     )
-    text = next(b.text for b in response.content if b.type == "text")
-    return json.loads(text)
+    _report_usage(node, LEAD_MODEL, response)
+    text = "\n".join(b.text for b in response.content if b.type == "text")
+    return extract_json(text)
 
 
 # ---------------------------------------------------------------------- nodes
@@ -85,7 +174,9 @@ async def _json_call(system: str, prompt: str, schema: dict) -> dict:
 
 async def plan(state: State) -> None:
     """Node: split one question into independent, searchable subquestions."""
+    emit("node.start", node="plan", model=LEAD_MODEL)
     result = await _json_call(
+        node="plan",
         system=(
             "You break a research question into independent subquestions. "
             "Each one must be answerable on its own, by someone who cannot see "
@@ -108,15 +199,17 @@ async def plan(state: State) -> None:
         },
     )
     state.subquestions = result["subquestions"][:MAX_SUBQUESTIONS]
+    emit("node.done", node="plan", subquestions=state.subquestions)
 
 
-async def research_one(subquestion: str) -> tuple[str, str]:
+async def research_one(subquestion: str, node: str = "research") -> tuple[str, str]:
     """Node: one worker, one subquestion, its own context window.
 
     Worker context never touches the lead's — that isolation is the whole point
     of a node. Only the summary crosses the edge back.
     """
-    response = await client.messages.create(
+    emit("node.start", node=node, model=WORKER_MODEL, subquestion=subquestion)
+    response = await _create(
         model=WORKER_MODEL,
         max_tokens=4000,
         system=(
@@ -127,13 +220,18 @@ async def research_one(subquestion: str) -> tuple[str, str]:
         tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
         messages=[{"role": "user", "content": subquestion}],
     )
+    _report_usage(node, WORKER_MODEL, response)
     notes = "\n".join(b.text for b in response.content if b.type == "text")
+    searches = sum(1 for b in response.content if b.type == "server_tool_use")
+    emit("node.done", node=node, notes=notes, searches=searches)
     return subquestion, notes
 
 
 async def critique(state: State) -> None:
     """Node: a reviewer that never wrote the draft. Its verdict is an edge."""
+    emit("node.start", node="critique", model=LEAD_MODEL, reviewing=len(state.findings))
     result = await _json_call(
+        node="critique",
         system=(
             "You review research for gaps. A gap is a claim that is unsourced, "
             "a subquestion that came back empty, or a contradiction nobody "
@@ -154,11 +252,13 @@ async def critique(state: State) -> None:
         },
     )
     state.gaps = result["gaps"][:MAX_SUBQUESTIONS]
+    emit("node.done", node="critique", gaps=state.gaps)
 
 
 async def synthesize(state: State) -> None:
     """Node: everything fans in here. One writer, one voice, all the findings."""
-    async with client.messages.stream(
+    emit("node.start", node="synthesize", model=LEAD_MODEL, sources=len(state.findings))
+    async with client().messages.stream(
         model=LEAD_MODEL,
         max_tokens=16000,
         system=(
@@ -179,8 +279,12 @@ async def synthesize(state: State) -> None:
             }
         ],
     ) as stream:
+        async for chunk in stream.text_stream:
+            emit("report.delta", text=chunk)
         message = await stream.get_final_message()
+    _report_usage("synthesize", LEAD_MODEL, message)
     state.report = "\n".join(b.text for b in message.content if b.type == "text")
+    emit("node.done", node="synthesize")
 
 
 # ----------------------------------------------------------------- the runtime
@@ -189,36 +293,41 @@ async def synthesize(state: State) -> None:
 
 async def run(question: str) -> State:
     state = State(question=question)
+    emit("graph.start", question=question, max_rounds=MAX_ROUNDS)
 
     await plan(state)
-    log(f"planned {len(state.subquestions)} subquestions")
 
     queue = list(state.subquestions)
     while True:
         state.round += 1
 
         # fan-out: N workers, concurrently, one per subquestion
-        log(f"round {state.round}: researching {len(queue)} subquestions")
-        results = await asyncio.gather(*(research_one(q) for q in queue))
+        workers = [f"r{state.round}w{i}" for i in range(len(queue))]
+        emit("fanout", round=state.round, workers=workers, subquestions=queue)
+        results = await asyncio.gather(
+            *(research_one(q, node) for q, node in zip(queue, workers))
+        )
 
         # fan-in: merge every worker's notes back into shared state
         merge_findings(state, dict(results))
+        emit("fanin", round=state.round, findings=len(state.findings))
 
         await critique(state)
         if not should_loop(state):
-            log("no gaps left" if not state.gaps else "loop budget spent")
+            emit(
+                "route",
+                to="synthesize",
+                reason="no gaps left" if not state.gaps else "loop budget spent",
+            )
             break
 
         # conditional edge: the gaps become the next round's subquestions
-        log(f"critique found {len(state.gaps)} gaps, looping back")
+        emit("route", to="research", reason=f"{len(state.gaps)} gaps", gaps=state.gaps)
         queue = state.gaps
 
     await synthesize(state)
+    emit("graph.done")
     return state
-
-
-def log(message: str) -> None:
-    print(f"  [graph] {message}", file=sys.stderr)
 
 
 def main() -> None:

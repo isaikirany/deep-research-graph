@@ -1,1 +1,3 @@
-anthropic>=0.80.0
+anthropic
+fastapi
+uvicorn
