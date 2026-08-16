@@ -1,5 +1,5 @@
 
-# Graph Engineering with Claude — a deep research agent in ~200 lines
+# Graph Engineering with Claude — a deep research agent
 
 A single agent loop is one node with an edge back to itself. **Graph engineering** is
 what you get when you stop growing that one loop and start wiring several
@@ -168,9 +168,3 @@ Each of these is a real graph-engineering concept, and each is a small diff here
 - [Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) — why context isolation per node matters.
 - [Claude Code subagents](https://code.claude.com/docs/en/sub-agents) — the same node/edge/state shape, without writing any code.
 
-## License
-
-MIT
-=======
-# deep-research-graph
->>>>>>> 9ed6f6e3928eb3af3fe2e45dc7deeb255a4ca0ba
